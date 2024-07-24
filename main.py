@@ -1,58 +1,41 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import koreanize-matplotlib
-# Load the data from the CSV file
-@st.cache
-def load_data(file_path):
-    data = pd.read_csv(file_path, encoding='cp949')
-    return data
+import koreanize_matplotlib
 
-# Calculate the proportion of elementary school-aged children
-def calculate_proportion(data, region):
-    region_data = data[data['행정구역'].str.contains(region)]
-    total_population = region_data['2024년06월_계_총인구수'].astype(int).sum()
-    elem_school_ages = ['2024년06월_계_6세', '2024년06월_계_7세', '2024년06월_계_8세', 
-                        '2024년06월_계_9세', '2024년06월_계_10세', '2024년06월_계_11세']
-    elem_population = region_data[elem_school_ages].astype(int).sum(axis=1).sum()
-    
-    return total_population, elem_population
+# 데이터 로드
+file_path = '202406_202406_연령별인구현황_월간.csv'
+data = pd.read_csv(file_path, encoding='euc-kr')
 
-# Streamlit app
-def main():
-    st.title("Elementary School Age Population Proportion by Region")
-    
-    # Load data
-    file_path = 'path/to/your/file.csv'  # Replace with the correct file path
-    data = load_data(file_path)
-    
-    # User input for region
-    region = st.text_input("Enter the region:")
-    
-    if region:
-        total_population, elem_population = calculate_proportion(data, region)
-        
-        if total_population == 0:
-            st.write("No data available for the specified region.")
-        else:
-            elem_percentage = (elem_population / total_population) * 100
-            other_population = total_population - elem_population
-            
-            # Create pie chart
-            labels = ['Elementary School Age', 'Other Ages']
-            sizes = [elem_population, other_population]
-            colors = ['#ff9999','#66b3ff']
-            explode = (0.1, 0)
-            
-            fig1, ax1 = plt.subplots()
-            ax1.pie(sizes, explode=explode, labels=labels, colors=colors,
-                    autopct='%1.1f%%', shadow=True, startangle=90)
-            ax1.axis('equal')
-            
-            st.pyplot(fig1)
-            st.write(f"Total Population: {total_population:,}")
-            st.write(f"Elementary School Age Population: {elem_population:,}")
-            st.write(f"Elementary School Age Percentage: {elem_percentage:.2f}%")
+# 중학생 연령대 추출
+middle_school_ages = ['2024년06월_계_12세', '2024년06월_계_13세', '2024년06월_계_14세']
 
-if __name__ == "__main__":
-    main()
+# 지역 선택
+st.title("중학생 연령대 인구 비율")
+selected_region = st.selectbox('지역을 선택하세요:', data['행정구역'].unique())
+
+# 선택한 지역의 데이터 추출
+region_data = data[data['행정구역'] == selected_region]
+
+# 중학생 연령대 인구수 합계
+middle_school_population = region_data[middle_school_ages].apply(lambda x: x.str.replace(',', '').astype(int)).sum(axis=1).values[0]
+
+# 총 인구수
+total_population = int(region_data['2024년06월_계_총인구수'].str.replace(',', '').values[0])
+
+# 비율 계산
+middle_school_ratio = (middle_school_population / total_population) * 100
+
+# 원 그래프 생성
+labels = ['중학생 연령대', '기타 연령대']
+sizes = [middle_school_ratio, 100 - middle_school_ratio]
+colors = ['#ff9999','#66b3ff']
+explode = (0.1, 0)
+
+fig1, ax1 = plt.subplots()
+ax1.pie(sizes, explode=explode, labels=labels, colors=colors, autopct='%1.1f%%',
+        shadow=True, startangle=140)
+ax1.axis('equal')
+
+# 그래프 출력
+st.pyplot(fig1)
